@@ -229,7 +229,7 @@ public class ConversationViewController : Object {
         } catch (Error e) { return; }
 
         FileSendOverlay overlay = new FileSendOverlay(file, file_info);
-        overlay.send_file.connect(() => send_file(file));
+        overlay.send_file.connect(send_file);
 
         stream_interactor.get_module(FileManager.IDENTITY).get_file_size_limits.begin(conversation, (_, res) => {
             HashMap<int, long> limits = stream_interactor.get_module(FileManager.IDENTITY).get_file_size_limits.end(res);
@@ -283,3 +283,4 @@ public class ConversationViewController : Object {
     }
 }
 }
+
