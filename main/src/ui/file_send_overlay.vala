@@ -10,22 +10,48 @@ namespace Dino.Ui {
 public class FileSendOverlay : Gtk.EventBox {
 
     public signal void close();
-    public signal void send_file();
+    public signal void send_file(File file);
 
     [GtkChild] public Button close_button;
     [GtkChild] public Button send_button;
     [GtkChild] public SizingBin file_widget_insert;
     [GtkChild] public Label info_label;
+    [GtkChild] public CheckButton enable_scaling;
 
     private bool can_send = true;
+
+    public File scale_file(File file, int MAX_WIDTH=1200, int MAX_HEIGHT=1200) throws GLib.Error {
+            Gdk.Pixbuf pixbuf;
+            try {
+                pixbuf = new Gdk.Pixbuf.from_file_at_size(file.get_path(), MAX_WIDTH, MAX_HEIGHT);
+            } catch (Error error) {
+                warning("Can't load picture %s - %s", file.get_path(), error.message);
+                return null;
+            }
+
+            pixbuf = pixbuf.apply_embedded_orientation();
+
+            string newpath = Path.build_filename(Environment.get_user_cache_dir(),
+                                "tosend.jpg");
+            if (pixbuf.save(newpath, "jpeg", "quality", "90", null)) {
+                return File.new_for_path (newpath);
+            } else {
+                return null;
+            }
+    }
 
     public FileSendOverlay(File file, FileInfo file_info) {
         close_button.clicked.connect(() => {
             this.close();
             this.destroy();
         });
-        send_button.clicked.connect(() => {
-            send_file();
+        send_button.clicked.connect((source) => {
+            if (enable_scaling.get_active()) {
+                File scaledfile = scale_file(file);
+                send_file(scaledfile);
+            } else {
+                send_file(file);
+            }
             this.close();
             this.destroy();
         });
@@ -69,6 +95,7 @@ public class FileSendOverlay : Gtk.EventBox {
                 yield image_widget.load_from_file(file, file_name);
                 widget = image_widget;
             } catch (Error e) { }
+            enable_scaling.visible = true;
         }
 
         if (widget == null) {
