@@ -34,8 +34,21 @@ public class NotificationEvents : StreamInteractionModule, Object {
         stream_interactor.connection_manager.connection_error.connect((account, error) => on_connection_error.begin(account, error));
         stream_interactor.get_module(ChatInteraction.IDENTITY).focused_in.connect((conversation) => on_focused_in.begin(conversation));
 
+        stream_interactor.get_module(CounterpartInteractionManager.IDENTITY).received_own_marker_on_conversation.connect( (conversation, item) => {
+            on_chat_marker_received.begin(conversation, item);
+        });
+
         notifier_promise = new Promise<NotificationProvider>();
         notifier = notifier_promise.future;
+    }
+
+    private async void on_chat_marker_received(Conversation conversation, ContentItem item) {
+        // retract only if the message is the last one in the chat
+        ContentItem last_item = stream_interactor.get_module(ContentItemStore.IDENTITY).get_latest(conversation);
+        if (item.id == last_item.id) {
+            NotificationProvider notifier = yield notifier.wait_async();
+            yield notifier.retract_conversation_notifications(conversation);
+        }
     }
 
     public async void register_notification_provider(NotificationProvider notification_provider) {
