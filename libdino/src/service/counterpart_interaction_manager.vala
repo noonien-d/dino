@@ -12,6 +12,7 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
     public signal void received_marker(Account account, Jid jid, Entities.Message message, Entities.Message.Marked marker);
     public signal void received_message_received(Account account, Jid jid, Entities.Message message);
     public signal void received_message_displayed(Account account, Jid jid, Entities.Message message);
+    public signal void received_own_marker_on_conversation(Conversation conversation, ContentItem item);
 
     private StreamInteractor stream_interactor;
     private HashMap<Conversation, HashMap<Jid, DateTime>> typing_since = new HashMap<Conversation, HashMap<Jid, DateTime>>(Conversation.hash_func, Conversation.equals_func);
@@ -159,6 +160,8 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
             ContentItem? read_up_to_item = stream_interactor.get_module(ContentItemStore.IDENTITY).get_item_by_id(conversation, conversation.read_up_to_item);
             if (read_up_to_item != null && read_up_to_item.compare(content_item) > 0) return;
             conversation.read_up_to_item = content_item.id;
+            
+            received_own_marker_on_conversation(conversation, content_item);
         } else {
             // We can't currently handle chat markers in MUCs
             if (conversation.type_ == Conversation.Type.GROUPCHAT) return;
