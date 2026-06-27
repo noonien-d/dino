@@ -149,7 +149,14 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
             } else {
                 message = stream_interactor.get_module(MessageStorage.IDENTITY).get_message_by_stanza_id(stanza_id, conversation);
             }
-            if (message == null) return;
+            if (message == null) {
+                if (marker_wo_message.has_key(stanza_id) &&
+                        marker_wo_message[stanza_id] == Xep.ChatMarkers.MARKER_DISPLAYED && marker == Xep.ChatMarkers.MARKER_RECEIVED) {
+                    return;
+                }
+                marker_wo_message[stanza_id] = marker;
+                return;
+            }
             // Don't move read marker backwards because we get old info from another client
             if (conversation.read_up_to != null && conversation.read_up_to.local_time.compare(message.local_time) > 0) return;
             conversation.read_up_to = message;
