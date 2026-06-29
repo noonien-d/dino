@@ -4,6 +4,12 @@ using Xmpp;
 using Dino.Entities;
 
 namespace Dino {
+
+public struct Marker {
+    public string marker;
+    public Jid from;
+}
+    
 public class CounterpartInteractionManager : StreamInteractionModule, Object {
     public static ModuleIdentity<CounterpartInteractionManager> IDENTITY = new ModuleIdentity<CounterpartInteractionManager>("counterpart_interaction_manager");
     public string id { get { return IDENTITY.id; } }
@@ -16,7 +22,7 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
 
     private StreamInteractor stream_interactor;
     private HashMap<Conversation, HashMap<Jid, DateTime>> typing_since = new HashMap<Conversation, HashMap<Jid, DateTime>>(Conversation.hash_func, Conversation.equals_func);
-    private HashMap<string, string> marker_wo_message = new HashMap<string, string>();
+    private HashMap<string, Marker?> marker_wo_message = new HashMap<string, Marker?>();
 
     public static void start(StreamInteractor stream_interactor) {
         CounterpartInteractionManager m = new CounterpartInteractionManager(stream_interactor);
@@ -151,10 +157,10 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
             }
             if (message == null) {
                 if (marker_wo_message.has_key(stanza_id) &&
-                        marker_wo_message[stanza_id] == Xep.ChatMarkers.MARKER_DISPLAYED && marker == Xep.ChatMarkers.MARKER_RECEIVED) {
+                        marker_wo_message[stanza_id].marker == Xep.ChatMarkers.MARKER_DISPLAYED && marker == Xep.ChatMarkers.MARKER_RECEIVED) {
                     return;
                 }
-                marker_wo_message[stanza_id] = marker;
+                marker_wo_message[stanza_id] = {marker, jid};
                 return;
             }
             // Don't move read marker backwards because we get old info from another client
@@ -195,17 +201,17 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
             } else {
                 // We might get a marker before the actual message (on catchup). Save the marker.
                 if (marker_wo_message.has_key(stanza_id) &&
-                        marker_wo_message[stanza_id] == Xep.ChatMarkers.MARKER_DISPLAYED && marker == Xep.ChatMarkers.MARKER_RECEIVED) {
+                        marker_wo_message[stanza_id].marker == Xep.ChatMarkers.MARKER_DISPLAYED && marker == Xep.ChatMarkers.MARKER_RECEIVED) {
                     return;
                 }
-                marker_wo_message[stanza_id] = marker;
+                marker_wo_message[stanza_id] = {marker, jid};
             }
         }
     }
 
     private void check_if_got_marker(Entities.Message message, Conversation conversation) {
         if (marker_wo_message.has_key(message.stanza_id)) {
-            handle_chat_marker(conversation, conversation.counterpart, marker_wo_message[message.stanza_id], message.stanza_id);
+            handle_chat_marker(conversation, marker_wo_message[message.stanza_id].from, marker_wo_message[message.stanza_id].marker, message.stanza_id);
             marker_wo_message.unset(message.stanza_id);
         }
     }
