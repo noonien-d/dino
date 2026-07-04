@@ -112,6 +112,10 @@ public class NotificationEvents : StreamInteractionModule, Object {
                 // handled in `on_call_incoming`
                 break;
         }
+        if (item.id == conversation.read_up_to_item) {
+            NotificationProvider notifier = yield notifier.wait_async();
+            yield notifier.retract_conversation_notifications(conversation);
+        }
     }
 
     private async void on_voice_request_received(Account account, Jid room_jid, Jid from_jid, string nick) {
