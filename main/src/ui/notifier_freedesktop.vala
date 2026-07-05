@@ -12,7 +12,7 @@ public class Dino.Ui.FreeDesktopNotifier : NotificationProvider, Object {
     private bool supports_body_markup = false;
     private bool supports_body_hyperlinks = false;
 
-    private HashMap<Conversation, uint32> content_notifications = new HashMap<Conversation, uint32>(Conversation.hash_func, Conversation.equals_func);
+    private HashMap<Conversation, AsyncQueue<uint32>> content_notifications = new HashMap<Conversation, AsyncQueue<uint32>>(Conversation.hash_func, Conversation.equals_func);
     private HashMap<Conversation, Gee.List<uint32>> conversation_notifications = new HashMap<Conversation, Gee.List<uint32>>(Conversation.hash_func, Conversation.equals_func);
     private HashMap<uint32, HashMap<string, ListenerFuncWrapper>> action_listeners = new HashMap<uint32, HashMap<string, ListenerFuncWrapper>>();
     private HashMap<Call, uint32> call_notifications = new HashMap<Call, uint32>(Call.hash_func, Call.equals_func);
@@ -89,8 +89,13 @@ public class Dino.Ui.FreeDesktopNotifier : NotificationProvider, Object {
                 body = @"$participant_display_name: $body";
             }
         }
+        uint32 replace_id = 0;
+        if (content_notifications.has_key(conversation)) {
+            replace_id = content_notifications[conversation].try_pop();
+        } else {
+            content_notifications[conversation] = new AsyncQueue<uint32>();
+        }
 
-        uint32 replace_id = content_notifications.has_key(conversation) ? content_notifications[conversation] : 0;
         HashTable<string, Variant> hash_table = new HashTable<string, Variant>(null, null);
         hash_table["image-data"] = yield get_conversation_icon(conversation);
         hash_table["desktop-entry"] = new Variant.string(Dino.Application.get_default().get_application_id());
@@ -98,7 +103,7 @@ public class Dino.Ui.FreeDesktopNotifier : NotificationProvider, Object {
         string[] actions = new string[] {"default", "Open conversation"};
         try {
             uint32 notification_id = yield dbus_notifications.notify("Dino", replace_id, "", conversation_display_name, body, actions, hash_table, -1);
-            content_notifications[conversation] = notification_id;
+            content_notifications[conversation].push(notification_id);
 
             add_action_listener(notification_id, "default", () => {
                 GLib.Application.get_default().activate_action("open-conversation", new Variant.int32(conversation.id));
@@ -278,19 +283,21 @@ public class Dino.Ui.FreeDesktopNotifier : NotificationProvider, Object {
     }
 
     public async void retract_content_item_notifications() {
-        foreach (uint32 id in content_notifications.values) {
-            try {
-                dbus_notifications.close_notification.begin(id);
-            } catch (Error e) { }
+        foreach (AsyncQueue<uint32> queue in content_notifications.values) {
+            while (queue.length() > 0) {
+                try {
+                    dbus_notifications.close_notification.begin(queue.pop());
+                } catch (Error e) { }
+            }
         }
-        content_notifications.clear();
     }
 
     public async void retract_conversation_notifications(Conversation conversation) {
         try {
             if (content_notifications.has_key(conversation)) {
-                dbus_notifications.close_notification.begin(content_notifications[conversation]);
-                content_notifications.unset(conversation);
+                while (content_notifications[conversation].length() > 0) {
+                    dbus_notifications.close_notification.begin(content_notifications[conversation].pop());
+                }
             }
 
             if (conversation_notifications.has_key(conversation)) {
