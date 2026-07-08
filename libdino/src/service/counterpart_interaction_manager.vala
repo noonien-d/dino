@@ -213,6 +213,9 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
         if (marker_wo_message.has_key(message.stanza_id)) {
             handle_chat_marker(conversation, marker_wo_message[message.stanza_id].from, marker_wo_message[message.stanza_id].marker, message.stanza_id);
             marker_wo_message.unset(message.stanza_id);
+        } else if (marker_wo_message.has_key(message.server_id)) {
+            handle_chat_marker(conversation, marker_wo_message[message.server_id].from, marker_wo_message[message.server_id].marker, message.server_id);
+            marker_wo_message.unset(message.server_id);
         }
     }
 
