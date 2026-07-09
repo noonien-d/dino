@@ -78,7 +78,12 @@ public class NotificationEvents : StreamInteractionModule, Object {
             case MessageItem.TYPE:
                 Message message = ((MessageItem) item).message;
 
-                if (message.direction == Message.DIRECTION_SENT) return;
+                if (message.direction == Message.DIRECTION_SENT) {
+                    NotificationProvider notifier = yield notifier.wait_async();
+                    yield notifier.retract_conversation_notifications(conversation);
+                    return;
+                }
+
                 // read on another device
                 if (message.marked == Entities.Message.Marked.READ) {
                     return;
