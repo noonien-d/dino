@@ -79,6 +79,10 @@ public class NotificationEvents : StreamInteractionModule, Object {
                 Message message = ((MessageItem) item).message;
 
                 if (message.direction == Message.DIRECTION_SENT) return;
+                // read on another device
+                if (message.marked == Entities.Message.Marked.READ) {
+                    return;
+                }
 
                 if (notify == Conversation.NotifySetting.HIGHLIGHT) {
                     Jid? nick = stream_interactor.get_module(MucManager.IDENTITY).get_own_jid(conversation.counterpart, conversation.account);
