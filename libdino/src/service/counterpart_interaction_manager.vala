@@ -163,6 +163,23 @@ public class CounterpartInteractionManager : StreamInteractionModule, Object {
                 marker_wo_message[stanza_id] = {marker, jid};
                 return;
             }
+            if (message != null) {
+                switch (marker) {
+                    case Xep.ChatMarkers.MARKER_RECEIVED:
+                        // If we got a received marker, mark the respective message received.
+                        message.marked = Entities.Message.Marked.RECEIVED;
+                        break;
+                    case Xep.ChatMarkers.MARKER_DISPLAYED:
+                        // If we got a display marker, set all messages up to that message as read (if we know they've been received).
+                        Gee.List<Entities.Message> messages = stream_interactor.get_module(MessageStorage.IDENTITY).get_messages(conversation);
+                        foreach (Entities.Message m in messages) {
+                            if (m.equals(message)) break;
+                            if (m.marked == Entities.Message.Marked.RECEIVED) m.marked = Entities.Message.Marked.READ;
+                        }
+                        message.marked = Entities.Message.Marked.READ;
+                        break;
+                }
+            }
             // Don't move read marker backwards because we get old info from another client
             if (conversation.read_up_to != null && conversation.read_up_to.local_time.compare(message.local_time) > 0) return;
             conversation.read_up_to = message;
