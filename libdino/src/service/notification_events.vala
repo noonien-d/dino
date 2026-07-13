@@ -125,6 +125,11 @@ public class NotificationEvents : StreamInteractionModule, Object {
             NotificationProvider notifier = yield notifier.wait_async();
             yield notifier.retract_conversation_notifications(conversation);
         }
+        ContentItem? read_up_to_item = stream_interactor.get_module(ContentItemStore.IDENTITY).get_item_by_id(conversation, conversation.read_up_to_item);
+        if (read_up_to_item != null && read_up_to_item.compare(item) > 0) {
+            NotificationProvider notifier = yield notifier.wait_async();
+            yield notifier.retract_conversation_notifications(conversation);
+        }
     }
 
     private async void on_voice_request_received(Account account, Jid room_jid, Jid from_jid, string nick) {
